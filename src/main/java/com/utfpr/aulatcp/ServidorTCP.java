@@ -7,8 +7,12 @@ package com.utfpr.aulatcp;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.Persistence;
 
 /**
  *
@@ -16,36 +20,37 @@ import java.net.Socket;
  */
 public class ServidorTCP {
     public static void main(String[] args) throws IOException {
-       //Para iniciar um servidor, esse servidor precisa ter uma porta
-       //para que ele possa ficar ouvindo as solicitações do cliente
        ServerSocket servidor = new ServerSocket(8081); 
        System.out.println("Servidor rodando na porta 8081");
        
-       //Fica no aguardo de alguma solicitação do lado do cliente
        Socket socket = servidor.accept(); 
        
-       //Imprime o IP e a Porta do cliente
+       Pessoa p = new Pessoa();
+       EntityManagerFactory factory = Persistence.createEntityManagerFactory("servidorTCP");
+       EntityManager em = factory.createEntityManager();
+       
+       //Salvar no banco
+       em.getTransaction().begin();
+       em.persist(p);
+       em.getTransaction().commit();
+       
+       //Consulta no banco
+       String qry = "SELECT pessoa FROM Pessoa pessoa WHERE pessoa.nome =: nome";
+       em.createQuery(qry, Pessoa.class).setParameter("nome", p.getNome()).getResultList();
+       em.close();
+       
        System.out.println("O cliente IP: " + socket.getInetAddress().getHostAddress() + " se conectou!");
         
-       //Definir um stream de entrada de dados no servidor
-       DataInputStream entrada = new DataInputStream(socket.getInputStream()); 
-       
-       //Por padrão o próprio Stream(socket) Java serializa as informações
+       ObjectInputStream entrada = new ObjectInputStream(socket.getInputStream());
        String mensagem = entrada.readUTF();
-       
-       //O servidor tem a função de converter a mensagem para maiúscula.
        String novaMensagem = mensagem.toUpperCase();
-       
-       //Definir um stream de saida para os dados enviados para o cliente. 
+
        DataOutputStream saida = new DataOutputStream(socket.getOutputStream());
-       
        saida.writeUTF(novaMensagem);
-       
-       //Fecha a comunicação com o cliente
+
        entrada.close(); 
        saida.close(); 
-       
-       //Fecha a conexão
+
        socket.close(); 
        servidor.close();
     }
